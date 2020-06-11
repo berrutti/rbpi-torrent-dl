@@ -12,5 +12,8 @@
     "subtitles"
   ],
   "author": "Matias Berrutti",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "webtorrent": "^0.108.6"
+  }
 }
