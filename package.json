@@ -1,7 +1,7 @@
 {
   "name": "rbpi-torrent-dl",
   "version": "1.0.0",
-  "description": "Webserver that automatically dowloads torrents videos and strips unwanted files directly to any folder you want",
+  "description": "A LAN webserver that automatically downloads torrents videos and strips unwanted files directly to any folder you want",
   "main": "index.js",
   "scripts": {
     "start": "nodemon app.js"
