@@ -6,6 +6,7 @@ const client = new WebTorrent();
 const express = require('express');
 const bodyParser = require('body-parser');
 const app = express();
+app.set('view engine', 'pug');
 
 let magnetURI = '';
 
@@ -22,17 +23,23 @@ const cleanTempFolder = () => {
 
 app.use(bodyParser.urlencoded({ extended: false }));
 
+const files = [];
+
 app.post('/magnet', (req, res) => {
     magnetURI = req.body['magnetURI'];
-    const files = [];
+
     client.add(magnetURI, { path: './temp/' }, (torrent) => {
         torrent.files.forEach(file => {
             files.push(file.name);
         });
         client.remove(magnetURI);
         cleanTempFolder();
-        res.json(files);
+        res.redirect('files');
     });
+});
+
+app.get('/files', (req, res) => {
+    res.render('files', { files });
 });
 
 app.post('/download', (req, res) => {
@@ -44,7 +51,6 @@ app.post('/download', (req, res) => {
         })
         client.remove(magnetURI);
         cleanTempFolder();
-        res.json(files);
     });
 });
 

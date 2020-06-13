@@ -1,0 +1,13 @@
+html(lang="en")
+    head
+        meta(charset="UTF-8")
+        meta(name="viewport", content="width=device-width, initial-scale=1.0")
+        title File List
+        // link(rel="stylesheet", href="")
+    body
+        main
+            h2 Files
+            .files
+                ul
+                    each file in files
+                        li #{file}
