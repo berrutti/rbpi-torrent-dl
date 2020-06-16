@@ -8,6 +8,16 @@ html(lang="en")
         main
             h2 Files
             .files
-                ul
-                    each file in files
-                        li #{file}
+                form(action="/download" method="POST")
+                    h2 Magnet URI
+                    input(name='magnetURI' value=magnetURI)
+                    h2 Files
+                    each file, index in files
+                        input(type='checkbox' name=file id=index)
+                        label(for=index) #{file}
+                        br
+                    h2 Subtitle
+                    input(name='subtitle')
+                    br
+                    button(type="submit") Download selected files
+                
