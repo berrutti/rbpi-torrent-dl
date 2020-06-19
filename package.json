@@ -2,7 +2,7 @@
   "name": "rbpi-torrent-dl",
   "version": "1.0.0",
   "description": "A LAN webserver that automatically downloads torrents videos and strips unwanted files directly to any folder you want",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
     "start": "nodemon app.js"
   },
@@ -14,8 +14,11 @@
   "author": "Matias Berrutti",
   "license": "MIT",
   "dependencies": {
+    "adm-zip": "^0.4.14",
     "body-parser": "^1.19.0",
     "express": "^4.17.1",
+    "follow-redirects": "^1.12.1",
+    "fs-extra": "^9.0.1",
     "pug": "^3.0.0",
     "rimraf": "^3.0.2",
     "socket.io": "^2.3.0",

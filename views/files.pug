@@ -9,15 +9,17 @@ html(lang="en")
             h2 Files
             .files
                 form(action="/download" method="POST")
-                    h2 Magnet URI
+                    h3 Magnet URI
                     input(name='magnetURI' value=magnetURI)
-                    h2 Files
+                    h3 Files
                     each file, index in files
-                        input(type='checkbox' name=file id=index)
+                        input(type='checkbox' name=file id=index checked=file.endsWith('mkv') || file.endsWith('mp4'))
                         label(for=index) #{file}
                         br
-                    h2 Subtitle
-                    input(name='subtitle')
+                    h3 Download folder
+                    input(name='folder' value=folder)
+                    h3 Subtitle URL
+                    input(name='subtitleURL')
                     br
                     button(type="submit") Download selected files
                 
