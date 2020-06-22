@@ -56,8 +56,13 @@ const downloadSubtitle = (subtitleURL) => {
 }
 
 const getBiggestFileName = (files) => {
-    debugger;
-    return files[0];
+    let biggestFile = files[0];
+    files.forEach(file => {
+        if (file.length > biggestFile.length) {
+            biggestFile = file;
+        }
+    })
+    return biggestFile.name;
 }
 
 const extractSubtitle = (folder, filename) => {
@@ -88,7 +93,6 @@ app.post('/download', (req, res) => {
     const magnetURI = req.body['magnetURI'];
     const folder = req.body['folder'];
     const subtitleURL = req.body['subtitleURL'];
-    res.send('<h1>Downloading files</h1>');
     client.add(magnetURI, { path: tempPath }, (torrent) => {
         const allFiles = torrent.files;
         const downloadedFiles = [];
