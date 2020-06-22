@@ -36,20 +36,20 @@ const moveAllFiles = (files, folder) => {
 const downloadSubtitle = (subtitleURL) => {
     const { http, https } = require('follow-redirects');
     const protocol = subtitleURL.startsWith('https') ? https : http;
-    const tempFilePath = path.join(tempPath, 'temp.zip');
+    const zipFilePath = path.join(tempPath, 'temp.zip');
     return new Promise((resolve, reject) => {
-        const file = fs.createWriteStream(tempFilePath);
+        const file = fs.createWriteStream(zipFilePath);
 
         const request = protocol.get(subtitleURL, (response) => {
             response.pipe(file);
             file.on('finish', () => {
                 file.close();
-                resolve();
+                resolve(zipFilePath);
             });
         });
 
         request.on('error', (err) => {
-            fs.unlink(tempFilePath);
+            fs.unlink(zipFilePath);
             reject(err.message);
         })
     })
@@ -65,10 +65,10 @@ const getBiggestFileName = (files) => {
     return biggestFile.name;
 }
 
-const extractSubtitle = (folder, filename) => {
+const extractSubtitle = (folder, filename, zipFilePath) => {
     const AdmZip = require('adm-zip');
-    const fullDestPath = path.join(targetPath, folder, filename + '.srt');
-    const zip = new AdmZip(tempFilePath);
+    const fullDestPath = path.join(targetPath, folder, filename.slice(0,-3) + 'srt');
+    const zip = new AdmZip(zipFilePath);
     const zipEntries = zip.getEntries();
     const subtitleEntry = zipEntries.find(entry => !entry.isDirectory && entry.entryName.endsWith('srt'));
     zip.extractEntryTo(subtitleEntry.name, fullDestPath, false, true);
@@ -109,8 +109,8 @@ app.post('/download', (req, res) => {
         if (subtitleURL) {
             console.log('Started subtitle download.');
             const filename = getBiggestFileName(downloadedFiles);
-            downloadSubtitle(subtitleURL).then(() => {
-                extractSubtitle(folder, filename);
+            downloadSubtitle(subtitleURL).then((zipFilePath) => {
+                extractSubtitle(folder, filename, zipFilePath);
             })
         }
         torrent.on('done', () => {
