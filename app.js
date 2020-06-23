@@ -1,6 +1,6 @@
 const path = require('path');
 const rimraf = require('rimraf');
-const fs = require('fs-extra');
+const fs = require('fs');
 const WebTorrent = require('webtorrent');
 const client = new WebTorrent();
 const express = require('express');
@@ -22,15 +22,13 @@ const deselectAllFiles = (torrent) => {
     }
 }
 
-const moveAllFiles = (files, folder) => {
-    const movingFiles = [];
-    files.forEach(file => {
-        const fullSourcePath = path.join(tempPath, file.path);
-        const fullDestPath = path.join(targetPath, folder, file.name);
-        console.log('Moving file', fullSourcePath, 'to', fullDestPath);
-        movingFiles.push(fs.move(fullSourcePath, fullDestPath));
+const selectCheckedFiles = (files, body) => {
+    files.forEach((file) => {
+        if (body[file.name] === 'on') {
+            console.log('Selecting file:', file.name);
+            file.select();
+        }
     });
-    return Promise.all(movingFiles);
 }
 
 const downloadSubtitle = (subtitleURL) => {
@@ -65,13 +63,28 @@ const getBiggestFileName = (files) => {
     return biggestFile.name;
 }
 
-const extractSubtitle = (folder, filename, zipFilePath) => {
+const extractSubtitle = (zipFilePath, torrentFolder) => {
     const AdmZip = require('adm-zip');
-    const fullDestPath = path.join(targetPath, folder, filename.slice(0,-3) + 'srt');
-    const zip = new AdmZip(zipFilePath);
-    const zipEntries = zip.getEntries();
-    const subtitleEntry = zipEntries.find(entry => !entry.isDirectory && entry.entryName.endsWith('srt'));
-    zip.extractEntryTo(subtitleEntry.name, fullDestPath, false, true);
+    const fullDestPath = path.join(targetPath, torrentFolder);
+    return new Promise((resolve, reject) => {
+        try {
+            const zip = new AdmZip(zipFilePath);
+            const zipEntries = zip.getEntries();
+            const subtitleEntry = zipEntries.find(entry => !entry.isDirectory && entry.entryName.endsWith('srt'));
+            zip.extractEntryTo(subtitleEntry, fullDestPath, false, true);
+            resolve(path.join(fullDestPath, subtitleEntry.name));
+        } catch (e) {
+            reject(e);
+        }
+
+    });
+}
+
+const renameSubtitle = (oldSubtitlePath, filename) => {
+    const parsedSubtitlePath = path.parse(oldSubtitlePath);
+    const newSubtitlePath = path.join(parsedSubtitlePath.dir, filename + parsedSubtitlePath.ext);
+    console.log(newSubtitlePath);
+    fs.renameSync(oldSubtitlePath, newSubtitlePath);
 }
 
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -91,38 +104,30 @@ app.post('/magnet', (req, res) => {
 
 app.post('/download', (req, res) => {
     const magnetURI = req.body['magnetURI'];
-    const folder = req.body['folder'];
+    const folder = req.body['folder'] || 'misc';
     const subtitleURL = req.body['subtitleURL'];
-    client.add(magnetURI, { path: tempPath }, (torrent) => {
-        const allFiles = torrent.files;
-        const downloadedFiles = [];
+    client.add(magnetURI, { path: targetPath }, (torrent) => {
         res.send('<h1>Downloading files</h1>');
         deselectAllFiles(torrent);
-        allFiles.forEach((file) => {
-            if (req.body[file.name] === 'on') {
-                console.log('Selecting file:', file.name);
-                file.select();
-                downloadedFiles.push(file);
-            }
-        });
+        selectCheckedFiles(torrent.files, req.body);
         console.log('Started download of torrent with hash:', torrent.infoHash);
         if (subtitleURL) {
             console.log('Started subtitle download.');
-            const filename = getBiggestFileName(downloadedFiles);
-            downloadSubtitle(subtitleURL).then((zipFilePath) => {
-                extractSubtitle(folder, filename, zipFilePath);
-            })
+            const videoFileName = getBiggestFileName(torrent.files);
+            downloadSubtitle(subtitleURL)
+                .then((zipFilePath) => {
+                    return extractSubtitle(zipFilePath, torrent.name);
+                })
+                .then((subtitleFullPath) => {
+                    renameSubtitle(subtitleFullPath, videoFileName.slice(0, -4));
+                })
         }
         torrent.on('done', () => {
             torrent.destroy(err => {
                 if (err) console.error(err);
             });
-            console.log('Torrent finished downloading.');
-            console.log('Started moving files to dest folder.');
-            moveAllFiles(downloadedFiles, folder).then(() => {
-                console.log('All files moved. Cleaning temp folder.')
-                cleanTempFolder();
-            });
+            console.log('Torrent finished downloading to:');
+            // Rename folder here
         });
 
         torrent.on('error', (error) => {
