@@ -83,8 +83,13 @@ const extractSubtitle = (zipFilePath, torrentFolder) => {
 const renameSubtitle = (oldSubtitlePath, filename) => {
     const parsedSubtitlePath = path.parse(oldSubtitlePath);
     const newSubtitlePath = path.join(parsedSubtitlePath.dir, filename + parsedSubtitlePath.ext);
-    console.log(newSubtitlePath);
     fs.renameSync(oldSubtitlePath, newSubtitlePath);
+}
+
+const renameFolder = (root, oldFolderName, newFolderName) => {
+    const oldFullPath = path.join(root, oldFolderName);
+    const newFullPath = path.join(root, newFolderName);
+    fs.renameSync(oldFullPath, newFullPath);
 }
 
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -104,10 +109,10 @@ app.post('/magnet', (req, res) => {
 
 app.post('/download', (req, res) => {
     const magnetURI = req.body['magnetURI'];
-    const folder = req.body['folder'] || 'misc';
+    const folder = req.body['folder'];
     const subtitleURL = req.body['subtitleURL'];
     client.add(magnetURI, { path: targetPath }, (torrent) => {
-        res.send('<h1>Downloading files</h1>');
+        res.redirect('/');
         deselectAllFiles(torrent);
         selectCheckedFiles(torrent.files, req.body);
         console.log('Started download of torrent with hash:', torrent.infoHash);
@@ -127,7 +132,10 @@ app.post('/download', (req, res) => {
                 if (err) console.error(err);
             });
             console.log('Torrent finished downloading to:');
-            // Rename folder here
+            console.log(torrent.path, torrent.name);
+            if (folder && folder !== torrent.name) {
+                renameFolder(torrent.path, torrent.name, folder);
+            }
         });
 
         torrent.on('error', (error) => {
