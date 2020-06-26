@@ -1,109 +1,29 @@
+require('dotenv').config();
 const path = require('path');
-const rimraf = require('rimraf');
-const fs = require('fs');
 const WebTorrent = require('webtorrent');
 const client = new WebTorrent();
 const express = require('express');
 const bodyParser = require('body-parser');
 const app = express();
+const files = require('./util/files');
+const torrents = require('./util/torrents');
 app.set('view engine', 'pug');
 
 const tempPath = path.join(__dirname, 'temp');
-const targetPath = path.join(__dirname, '..', 'toMove');
-
-const cleanTempFolder = () => {
-    try { rimraf.sync(tempPath); } catch (e) { }
-}
-
-const deselectAllFiles = (torrent) => {
-    if (torrent && torrent.files) {
-        torrent.files.forEach(file => file.deselect());
-        torrent.deselect(0, torrent.pieces.length - 1, false);
-    }
-}
-
-const selectCheckedFiles = (files, body) => {
-    files.forEach((file) => {
-        if (body[file.name] === 'on') {
-            console.log('Selecting file:', file.name);
-            file.select();
-        }
-    });
-}
-
-const downloadSubtitle = (subtitleURL) => {
-    const { http, https } = require('follow-redirects');
-    const protocol = subtitleURL.startsWith('https') ? https : http;
-    const zipFilePath = path.join(tempPath, 'temp.zip');
-    return new Promise((resolve, reject) => {
-        const file = fs.createWriteStream(zipFilePath);
-
-        const request = protocol.get(subtitleURL, (response) => {
-            response.pipe(file);
-            file.on('finish', () => {
-                file.close();
-                resolve(zipFilePath);
-            });
-        });
-
-        request.on('error', (err) => {
-            fs.unlink(zipFilePath);
-            reject(err.message);
-        })
-    })
-}
-
-const getBiggestFileName = (files) => {
-    let biggestFile = files[0];
-    files.forEach(file => {
-        if (file.length > biggestFile.length) {
-            biggestFile = file;
-        }
-    })
-    return biggestFile.name;
-}
-
-const extractSubtitle = (zipFilePath, torrentFolder) => {
-    const AdmZip = require('adm-zip');
-    const fullDestPath = path.join(targetPath, torrentFolder);
-    return new Promise((resolve, reject) => {
-        try {
-            const zip = new AdmZip(zipFilePath);
-            const zipEntries = zip.getEntries();
-            const subtitleEntry = zipEntries.find(entry => !entry.isDirectory && entry.entryName.endsWith('srt'));
-            zip.extractEntryTo(subtitleEntry, fullDestPath, false, true);
-            resolve(path.join(fullDestPath, subtitleEntry.name));
-        } catch (e) {
-            reject(e);
-        }
-
-    });
-}
-
-const renameSubtitle = (oldSubtitlePath, filename) => {
-    const parsedSubtitlePath = path.parse(oldSubtitlePath);
-    const newSubtitlePath = path.join(parsedSubtitlePath.dir, filename + parsedSubtitlePath.ext);
-    fs.renameSync(oldSubtitlePath, newSubtitlePath);
-}
-
-const renameFolder = (root, oldFolderName, newFolderName) => {
-    const oldFullPath = path.join(root, oldFolderName);
-    const newFullPath = path.join(root, newFolderName);
-    fs.renameSync(oldFullPath, newFullPath);
-}
+const targetPath = process.env.DOWNLOAD_LOCATION;
 
 app.use(bodyParser.urlencoded({ extended: false }));
 
 app.post('/magnet', (req, res) => {
     const magnetURI = req.body['magnetURI'];
     client.add(magnetURI, { path: tempPath }, (torrent) => {
-        const files = [];
+        const torrentFiles = [];
         torrent.files.forEach(file => {
-            files.push(file.name);
+            torrentFiles.push(file.name);
         });
         client.remove(magnetURI);
-        cleanTempFolder();
-        res.render('files', { files, magnetURI, folder: torrent.name });
+        files.cleanTempFolder();
+        res.render('files', { torrentFiles, magnetURI, folder: torrent.name });
     });
 });
 
@@ -112,38 +32,46 @@ app.post('/download', (req, res) => {
     const folder = req.body['folder'];
     const subtitleURL = req.body['subtitleURL'];
     client.add(magnetURI, { path: targetPath }, (torrent) => {
-        res.redirect('/');
-        deselectAllFiles(torrent);
-        selectCheckedFiles(torrent.files, req.body);
+        torrents.deselectAllTorrentFiles(torrent);
+        torrents.selectCheckedTorrentFiles(torrent.files, req.body);
         console.log('Started download of torrent with hash:', torrent.infoHash);
-        if (subtitleURL) {
-            console.log('Started subtitle download.');
-            const videoFileName = getBiggestFileName(torrent.files);
-            downloadSubtitle(subtitleURL)
-                .then((zipFilePath) => {
-                    return extractSubtitle(zipFilePath, torrent.name);
-                })
-                .then((subtitleFullPath) => {
-                    renameSubtitle(subtitleFullPath, videoFileName.slice(0, -4));
-                })
-        }
+        let savedProgress = '';
+        torrent.on('download', () => {
+            let fixedProgress = torrent.progress.toFixed(2);
+            if (savedProgress !== fixedProgress) {
+                savedProgress = fixedProgress;
+                console.log('Progress:', savedProgress);
+            }
+        });
         torrent.on('done', () => {
             torrent.destroy(err => {
                 if (err) console.error(err);
             });
             console.log('Torrent finished downloading to:');
             console.log(torrent.path, torrent.name);
+            if (subtitleURL) {
+                console.log('Started subtitle download.');
+                const videoFileName = getBiggestFileName(torrent.files);
+                files.downloadSubtitle(subtitleURL)
+                    .then((zipFilePath) => {
+                        return files.extractSubtitle(zipFilePath, torrent.name);
+                    })
+                    .then((subtitleFullPath) => {
+                        files.renameSubtitle(subtitleFullPath, videoFileName);
+                    })
+            }
             if (folder && folder !== torrent.name) {
-                renameFolder(torrent.path, torrent.name, folder);
+                files.renameFolder(torrent.path, torrent.name, folder);
             }
         });
 
         torrent.on('error', (error) => {
             client.remove(magnetURI);
             console.error('Could not download.', error);
-            cleanTempFolder();
+            files.cleanTempFolder();
         });
     });
+    res.redirect(req.baseUrl + '/');
 });
 
 app.use('/', (req, res) => {
@@ -151,3 +79,4 @@ app.use('/', (req, res) => {
 });
 
 app.listen(3000);
+console.log('Started server at port 3000');

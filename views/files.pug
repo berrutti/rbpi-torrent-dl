@@ -10,9 +10,9 @@ html(lang="en")
             .files
                 form(action="/download" method="POST")
                     h3 Magnet URI
-                    input(name='magnetURI' value=magnetURI)
+                    input(name='magnetURI' value=magnetURI readonly=true)
                     h3 Files
-                    each file, index in files
+                    each file, index in torrentFiles
                         input(type='checkbox' name=file id=index checked=file.endsWith('mkv') || file.endsWith('mp4'))
                         label(for=index) #{file}
                         br
