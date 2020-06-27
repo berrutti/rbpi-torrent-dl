@@ -3,23 +3,32 @@ html(lang="en")
         meta(charset="UTF-8")
         meta(name="viewport", content="width=device-width, initial-scale=1.0")
         title File List
-        // link(rel="stylesheet", href="")
+        link(rel="stylesheet" type="text/css" href="bulma/bulma.css")
     body
-        main
-            h2 Files
+        .container
             .files
                 form(action="/download" method="POST")
-                    h3 Magnet URI
-                    input(name='magnetURI' value=magnetURI readonly=true)
-                    h3 Files
-                    each file, index in torrentFiles
-                        input(type='checkbox' name=file id=index checked=file.endsWith('mkv') || file.endsWith('mp4'))
-                        label(for=index) #{file}
-                        br
-                    h3 Download folder
-                    input(name='folder' value=folder)
-                    h3 Subtitle URL
-                    input(name='subtitleURL')
-                    br
-                    button(type="submit") Download selected files
+                    .field
+                        label.label Magnet URI
+                        .control
+                            input.input(name='magnetURI' value=magnetURI readonly=true)
+                    label.label Files
+                    each file in torrentFiles
+                        .field
+                            .control
+                                label.checkbox
+                                    input(type='checkbox' name=file checked=file.endsWith('mkv') || file.endsWith('mp4'))
+                                    |  #{file}
+                                    
+                    .field
+                        label.label Download Folder
+                        .control
+                            input.input(name='folder' value=folder)
+                    .field
+                        label.label Subtitle URL
+                        .control
+                            input.input(name='subtitleURL')
+                    .field
+                        .control
+                            button.button(type="submit") Download selected files
                 

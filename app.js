@@ -10,9 +10,9 @@ const torrents = require('./util/torrents');
 app.set('view engine', 'pug');
 
 const tempPath = path.join(__dirname, 'temp');
-const targetPath = process.env.DOWNLOAD_LOCATION;
 
 app.use(bodyParser.urlencoded({ extended: false }));
+app.use('/bulma', express.static(__dirname + '/node_modules/bulma/css/'));
 
 app.post('/magnet', (req, res) => {
     const magnetURI = req.body['magnetURI'];
@@ -31,7 +31,7 @@ app.post('/download', (req, res) => {
     const magnetURI = req.body['magnetURI'];
     const folder = req.body['folder'];
     const subtitleURL = req.body['subtitleURL'];
-    client.add(magnetURI, { path: targetPath }, (torrent) => {
+    client.add(magnetURI, { path: process.env.DOWNLOAD_LOCATION }, (torrent) => {
         torrents.deselectAllTorrentFiles(torrent);
         torrents.selectCheckedTorrentFiles(torrent.files, req.body);
         console.log('Started download of torrent with hash:', torrent.infoHash);
@@ -47,8 +47,7 @@ app.post('/download', (req, res) => {
             torrent.destroy(err => {
                 if (err) console.error(err);
             });
-            console.log('Torrent finished downloading to:');
-            console.log(torrent.path, torrent.name);
+            console.log('Download complete:', torrent.name);
             if (subtitleURL) {
                 console.log('Started subtitle download.');
                 const videoFileName = getBiggestFileName(torrent.files);
