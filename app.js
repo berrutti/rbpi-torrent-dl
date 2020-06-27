@@ -44,7 +44,7 @@ app.post('/download', (req, res) => {
         const videoFileName = getBiggestFileName(torrent.files);
         let savedProgress = '';
         torrent.on('download', () => {
-            let fixedProgress = (100 * torrent.progress).toFixed(2) + "%";
+            let fixedProgress = (100 * torrent.progress).toFixed(0) + "%";
             if (savedProgress !== fixedProgress) {
                 savedProgress = fixedProgress;
                 console.log('Progress:', savedProgress);

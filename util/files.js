@@ -67,7 +67,7 @@ function renameFolder(root, oldFolderName, newFolderName) {
         const newFullPath = path.join(root, newFolderName);
         fs.renameSync(oldFullPath, newFullPath);
         console.log('Renamed folder. Old name:', oldFolderName);
-        console.log('New name:', oldFolderName);
+        console.log('New name:', newFolderName);
     } catch (e) {
         console.error('Could not rename the folder:', e);
     }
