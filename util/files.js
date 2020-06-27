@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 
 function cleanTempFolder() {
     const rimraf = require('rimraf');
