@@ -22,24 +22,24 @@ app.use('/bulma', express.static(__dirname + '/node_modules/bulma/css/'));
 app.post('/magnet', (req, res) => {
     const magnetURI = req.body['magnetURI'];
     client.add(magnetURI, undefined, (torrent) => {
+        const folder = torrent.name;
         const torrentFiles = [];
         torrent.files.forEach(file => {
             torrentFiles.push(file.name);
         });
         client.remove(magnetURI);
         cleanTempFolder();
-        res.render('files', { torrentFiles, magnetURI, folder: torrent.name });
+        res.render('files', { torrentFiles, magnetURI, folder });
     });
 });
 
 app.post('/download', (req, res) => {
     const magnetURI = req.body['magnetURI'];
     const subtitleURL = req.body['subtitleURL'];
-    let folder = req.body['folder'];
+    
     client.add(magnetURI, { path: process.env.DOWNLOAD_LOCATION }, (torrent) => {
-        if (!folder) {
-            folder = torrent.name;
-        }
+        const torrentName = torrent.name;
+        const folder = req.body['folder'] || torrentName;
         selectTorrentFiles(torrent, req.body);
         const videoFileName = getBiggestFileName(torrent.files);
         let savedProgress = '';
@@ -56,9 +56,9 @@ app.post('/download', (req, res) => {
                 if (err) {
                     console.error(err);
                 } else {
-                    console.log('Download complete:', torrent.name);
-                    if (folder !== torrent.name) {
-                        renameFolder(torrent.path, torrent.name, folder);
+                    console.log('Download complete:', torrentName);
+                    if (folder !== torrentName) {
+                        renameFolder(torrent.path, torrentName, folder);
                     }
                     if (subtitleURL) {
                         downloadSubtitle(subtitleURL)
