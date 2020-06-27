@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const tempPath = path.join(__dirname, 'temp');
 
 function cleanTempFolder() {
     const rimraf = require('rimraf');
@@ -18,6 +19,7 @@ function downloadSubtitle(subtitleURL) {
 
         file.on('finish', () => {
             file.close();
+            console.log('Finished downloading subtitle.')
             resolve(zipFilePath);
         });
 
@@ -34,7 +36,7 @@ function downloadSubtitle(subtitleURL) {
 
 function extractSubtitle(zipFilePath, torrentFolder) {
     const AdmZip = require('adm-zip');
-    const fullDestPath = path.join(targetPath, torrentFolder);
+    const fullDestPath = path.join(process.env.DOWNLOAD_LOCATION, torrentFolder);
     return new Promise((resolve, reject) => {
         try {
             const zip = new AdmZip(zipFilePath);
@@ -45,7 +47,6 @@ function extractSubtitle(zipFilePath, torrentFolder) {
         } catch (e) {
             reject(e);
         }
-
     });
 }
 
@@ -54,6 +55,7 @@ function renameSubtitle(oldSubtitlePath, filename) {
         const parsedSubtitlePath = path.parse(oldSubtitlePath);
         const newSubtitlePath = path.join(parsedSubtitlePath.dir, filename + parsedSubtitlePath.ext);
         fs.renameSync(oldSubtitlePath, newSubtitlePath);
+        console.log('Renamed subtitle to: ', filename + parsedSubtitlePath.ext);
     } catch (e) {
         console.error('Could not rename the subtitle:', e);
     }
@@ -64,6 +66,8 @@ function renameFolder(root, oldFolderName, newFolderName) {
         const oldFullPath = path.join(root, oldFolderName);
         const newFullPath = path.join(root, newFolderName);
         fs.renameSync(oldFullPath, newFullPath);
+        console.log('Renamed folder. Old name:', oldFolderName);
+        console.log('New name:', oldFolderName);
     } catch (e) {
         console.error('Could not rename the folder:', e);
     }

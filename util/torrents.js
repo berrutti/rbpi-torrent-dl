@@ -1,15 +1,12 @@
-function deselectAllTorrentFiles(torrent) {
-    if (torrent && torrent.files) {
-        torrent.files.forEach(file => file.deselect());
-        torrent.deselect(0, torrent.pieces.length - 1, false);
-    }
-}
-
-function selectCheckedTorrentFiles(files, body) {
-    files.forEach((file) => {
+function selectTorrentFiles(torrent, body) {
+    torrent.deselect(0, torrent.pieces.length - 1, false);
+    torrent.files.forEach(file => {
         if (body[file.name] === 'on') {
-            console.log('Selecting file:', file.name);
+            console.log('Selected', file.name);
             file.select();
+        } else {
+            console.log('Deselected', file.name);
+            file.deselect();
         }
     });
 }
@@ -25,7 +22,6 @@ function getBiggestFileName(files) {
 }
 
 module.exports = {
-    deselectAllTorrentFiles,
-    selectCheckedTorrentFiles,
+    selectTorrentFiles,
     getBiggestFileName
 };
